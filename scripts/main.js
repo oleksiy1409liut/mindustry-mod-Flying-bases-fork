@@ -9,11 +9,11 @@
 //
 // Logic runs everywhere; UI, drawing and input run only on a client (not on a headless server).
 
-var MOD = "flying-bases";
+var MOD = "flying-bases-fork";
 var TS = 8;                   // world units per tile
 var DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // rotation index -> tile step
-var MAX_MACHINE_TILES = 6000;
-var MAX_EXTENT = 110;         // maximal machine width/height in tiles
+var MAX_MACHINE_TILES = 12000;
+var MAX_EXTENT = 300;         // maximal machine width/height in tiles
 var POCKET_MARGIN = 3;
 var TAG = "mb-machines2";     // key inside the save: kept, so saves of the old "Machine Builder" still load
 
@@ -21,7 +21,8 @@ var TAG = "mb-machines2";     // key inside the save: kept, so saves of the old 
 // Thrust is counted in "rocket booster units": one rocket booster = 1.
 var BASE_BOOSTER_POWER = 45;      // tiles/s per machine tile, one rocket booster (was 30 -> now 1.5x faster)
 var ENERGY_THRUST = 4;            // energy booster (2x2) = 4 rocket boosters on power alone (was 8: now half, a liquid brings it back)
-var ENERGY_USE = 1.5;             // power units per tick = 90 power units / second
+var ENERGY_USE = 1.5;   // power units per tick = 90 power units / second
+var 2ENERGY_USE = 6;   
 var FUEL_BURN_TICKS = 8 * 60;     // one fuel item lasts 8 seconds of engine work
 var FUEL_ITEM_CAPACITY = 20;
 var FUEL_WEAKEN = 3;              // the fuel booster is 3 times weaker than it was (cryofluid brings the old thrust back)
@@ -31,6 +32,7 @@ var ENERGY_LIQUID_USE = 10 / (5 * 60);   // liquid units per tick of work
 var ENERGY_WATER_MULT = 2;
 var ENERGY_CRYO_MULT = 2.5;
 var ENERGY_LIQUID_CAPACITY = 20;
+var 2ENERGY_LIQUID_CAPACITY = 20;
 // fuel booster: 60 units of liquid per burnt fuel item (= per 8 seconds of work), water x1.25, cryofluid x3 of the thrust
 var FUEL_LIQUID_PER_ITEM = 60;
 var FUEL_LIQUID_USE = FUEL_LIQUID_PER_ITEM / FUEL_BURN_TICKS;
@@ -533,6 +535,28 @@ var rocketBooster = defBooster("rocket-booster", 1, 160,
     () => extend(Building, {
         draw(){ drawBooster(this); }
     }));
+
+// 3x3: energy booster, thrust 32 rocket boosters (water x2, cryofluid x2.5), uses 90 power units / second while the engine works
+var energyBooster = defBooster("2energy-booster", 3, 6400,
+    ItemStack.with(Items.copper, 1000, Items.lead, 500, Items.silicon, 300, Items.plastanium, 200),
+    () => extend(Building, {
+        draw(){ drawBooster(this); },
+        // power is requested only while the engine really works (the machine is being driven)
+        shouldConsume(){
+            var s = bstates[this.id];
+            return s !== undefined && s.thrusting;
+        },
+        acceptLiquid(source, liquid){
+            return acceptsBoostLiquid(this, liquid);
+        },
+        displayConsumption(table){
+            boosterConsumption(this, table);
+        }
+    }));
+energyBooster.hasPower = true;
+energyBooster.consumePower(2ENERGY_USE);
+energyBooster.hasLiquids = true;
+energyBooster.liquidCapacity = 2ENERGY_LIQUID_CAPACITY;
 
 // 2x2: energy booster, thrust 4 rocket boosters (water x2, cryofluid x2.5), uses 90 power units / second while the engine works
 var energyBooster = defBooster("energy-booster", 2, 640,
